@@ -7,12 +7,18 @@
 
 #include "head.h"
 extern int repollfd, bepollfd;
+extern struct User *rteam;
+extern struct User *bteam;
 
 void do_work(struct User *user){
     struct ChatMsg msg;
+    char buff[20];
+
     recv(user->fd, (void *)&msg,sizeof(msg), 0);
+
     if(msg.type & CHAT_WALL) {
         printf("<%s> ~ %s \n",user->name, msg.msg);
+        send(user->fd, (void*)&msg, sizeof(msg), 0);
     } else if (msg.type&CHAT_MSG) {
         printf("<%s> $  %s \n",user->name, msg.msg);
     } else if (msg.type & CHAT_FIN) {
@@ -22,8 +28,21 @@ void do_work(struct User *user){
         printf(GREEN"Server Info"NONE": %s logout!\n", user->name);
         close(user->fd);
     } else if (msg.type & CHAT_FUNC) {
-
+        //printf(YELLOW"Online List : \n"NONE);
+        for (int i = 0; i < MAX; i++) {
+            if (rteam[i].online) {
+                //sprintf(buff,"%s\n",rteam[i].name);
+                send(user->fd, (void *)&msg,sizeof(msg),0);
+            }//printf("%s \n",rteam[i].name);
+        }
+        for (int i = 0; i < MAX; i++) {
+            if (bteam[i].online){
+                //sprintf(buff,"%s\n",bteam[i].name);
+                send(user->fd, (void *)&msg, sizeof(msg),0);
+            }
+        }
     }
+}
 
 void task_queue_init(struct task_queue *taskQueue, int sum, int epollfd) {
     taskQueue->sum = sum;
