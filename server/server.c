@@ -1,11 +1,10 @@
 /*************************************************************************
-:Q
-:q
 	> File Name: server.c
 	> Author: suyelu 
 	> Mail: suyelu@126.com
 	> Created Time: Thu 09 Jul 2020 10:51:49 AM CST
  ************************************************************************/
+
 
 #include "head.h"
 char *conf = "./footballd.conf";
@@ -13,7 +12,7 @@ struct Map court;
 struct Bpoint ball; //球的位置
 struct BallStatus ball_status; //球的状态
 struct Score score;
-int repollfd, bepollfd;
+int repollfd, bepollfd;//建立两个从反应堆
 struct User *rteam, *bteam;
 int port = 0;
 
@@ -50,7 +49,7 @@ int main(int argc, char **argv) {
     if ((listener = socket_create_udp(port)) < 0) {
         perror("socket_create_udp()");
         exit(1);
-    }
+    }//主反应堆设置为监听状态
 
     DBG(GREEN"INFO"NONE" : Server start On port %d.\n", port);
 
@@ -66,17 +65,20 @@ int main(int argc, char **argv) {
         exit(1);
     }
     
+    //初始化两个循环队列，用于存储用户连接信息
     struct task_queue redQueue;
     struct task_queue blueQueue;
+    task_queue_init(&redQueue, MAX, repollfd);
+    task_queue_init(&blueQueue, MAX, bepollfd);
 
     pthread_create(&red_t, NULL, sub_reactor, (void *)&redQueue);
-    pthread_create(&blue_t, NULL, sub_reactor, (void *)&blueQueue);
+    pthread_create(&blue_t, NULL, sub_reactor, (void *)&blueQueue);//sub_reactor是线程运行的地址，
     
     struct epoll_event ev, events[MAX * 2];
     ev.events = EPOLLIN;
     ev.data.fd = listener;
     
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listener, &ev) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listener, &ev) < 0)  {
         perror("epoll_ctl");
         exit(1);
     }
@@ -98,7 +100,7 @@ int main(int argc, char **argv) {
             if (events[i].data.fd == listener) {
                 int new_fd = udp_accept(listener, &user);
                 if (new_fd > 0) {
-                //    add_to_sub_reactor(&user);
+                    add_to_sub_reactor(&user);
                 }
             }
         }
